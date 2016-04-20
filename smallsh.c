@@ -19,9 +19,7 @@ int inarg(char c);
 int procline(void);
 void printJobList(struct job*);	
 int setType(int, pid_t);
-void endProcess(pid_t);
-void stopProcess(pid_t);
-
+//pid_t testPid;
 /*program buffers and work pointers*/
 static char inpbuf[MAXBUF], tokbuf[2*MAXBUF], *ptr = inpbuf, *tok = tokbuf, special [] = {' ', '\t', '&', ';', '\n', '\0'};
 char *prompt = "Command> ";
@@ -150,11 +148,11 @@ int procline(void){ 			/* process input line */
 						printf("Oh\n");
 					}
 					else if(strcmp("bg\0",arg[0]) == 0 | strcmp("fg\0",arg[0]) ==0)
-					{
+					{/*
 						if(strcmp("bg\0",arg[0]) == 0)
 							setType(BACKGROUND, (pid_t)arg[1]);
 						else
-							setType(FOREGROUND, (pid_t)arg[1]);
+							setType(FOREGROUND, (pid_t)arg[1]);*/
 					}
 					else if(strcmp("kill\0", arg[0]) == 0)
 					{
@@ -175,11 +173,20 @@ int procline(void){ 			/* process input line */
 	}
 }
 
-
 /* execute a command with optional wait */
 int runcommand(char **cline, int where){
 	pid_t pid;
 	int status;
+	void end_Process(pid_t), stop_Process(pid_t);
+	static struct sigaction act, act2;
+	
+	act.sa_handler = end_Process;
+	act2.sa_handler = stop_Process;
+	
+	testPid = pid;
+	
+	sigaction(SIGINT, &act, NULL);
+	sigaction(SIGTSTP, &act2, NULL);
 	
 	switch(pid = fork()){
 		case -1:
@@ -187,7 +194,7 @@ int runcommand(char **cline, int where){
 			return (-1);
 		case 0:
 			//add job to joblist
-			//set signal for ^Z & ^C
+	
 			execvp(*cline, cline);
 			perror(*cline);
 			exit(1);
@@ -203,6 +210,20 @@ int runcommand(char **cline, int where){
 	/* wait until process pid exits */
 	if(waitpid(pid, &status, 0) == -1)
 		return (-1);
+	
 	else
 		return (status);
+}
+
+void end_Process(pid_t pid)
+{
+	printf("Oh\n");
+	
+	kill(SIGKILL,testPid);
+}
+
+void stop_Process(pid_t pid)
+{
+	printf("Oh\n");
+	kill(SIGTSTP,testPid);
 }
