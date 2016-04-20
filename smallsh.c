@@ -187,6 +187,7 @@ int runcommand(char **cline, int where){
 			return (-1);
 		case 0:
 			//add job to joblist
+			//set signal for ^Z & ^C
 			execvp(*cline, cline);
 			perror(*cline);
 			exit(1);
