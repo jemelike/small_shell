@@ -6,26 +6,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-struct job{
-	pid_t jobpid;
-	int jobID;
-	int bg;
-	struct job *next;
-};
-
-int userin(char *);
-int gettok(char **);
-int inarg(char c);
-int procline(void);
-void printJobList(struct job*);	
-int setType(int, pid_t);
-//pid_t testPid;
 /*program buffers and work pointers*/
 static char inpbuf[MAXBUF], tokbuf[2*MAXBUF], *ptr = inpbuf, *tok = tokbuf, special [] = {' ', '\t', '&', ';', '\n', '\0'};
 char *prompt = "Command> ";
-
+pid_t testPid;
 main()
-{
+{	
+	static struct sigaction act, act2, act3;
+	
+	act.sa_handler = end_Process;
+	act2.sa_handler = stop_Process;
+	act3.sa_handler = job_remove_handle;
+	
+	sigaction(SIGINT, &act, NULL);
+	sigaction(SIGTSTP, &act2, NULL);
+	sigaction(SIGCHLD, &act3, NULL);
+	
 	while( userin(prompt) != EOF)
 		procline();
 }
@@ -145,14 +141,14 @@ int procline(void){ 			/* process input line */
 					
 					if(strcmp("job\0", arg[0]) == 0)
 					{
-						printf("Oh\n");
+						//printJobList(joblist);
 					}
 					else if(strcmp("bg\0",arg[0]) == 0 | strcmp("fg\0",arg[0]) ==0)
-					{/*
+					{
 						if(strcmp("bg\0",arg[0]) == 0)
 							setType(BACKGROUND, (pid_t)arg[1]);
 						else
-							setType(FOREGROUND, (pid_t)arg[1]);*/
+							setType(FOREGROUND, (pid_t)arg[1]);
 					}
 					else if(strcmp("kill\0", arg[0]) == 0)
 					{
@@ -160,7 +156,6 @@ int procline(void){ 			/* process input line */
 					}
 					else{
 						runcommand(arg, type);
-						
 					}
 				}
 				
@@ -177,16 +172,7 @@ int procline(void){ 			/* process input line */
 int runcommand(char **cline, int where){
 	pid_t pid;
 	int status;
-	void end_Process(pid_t), stop_Process(pid_t);
-	static struct sigaction act, act2;
 	
-	act.sa_handler = end_Process;
-	act2.sa_handler = stop_Process;
-	
-	testPid = pid;
-	
-	sigaction(SIGINT, &act, NULL);
-	sigaction(SIGTSTP, &act2, NULL);
 	
 	switch(pid = fork()){
 		case -1:
@@ -194,12 +180,25 @@ int runcommand(char **cline, int where){
 			return (-1);
 		case 0:
 			//add job to joblist
-	
+			job *new;
+			
+			new->jobID = ++numjob;
+			new->jobID->pjob->pid = getpid();
+			if(where == FOREGROUND)
+				new->jobID->pjob->type = FOREGROUND;
+			else
+				new->jobID->pjob->type = BACKGROUND;
+				
+			new->jobID->pjob->running = 1;
+			
+			//Connect commands based on the number of pipes in the input
+			
+			addJob(new);
 			execvp(*cline, cline);
 			perror(*cline);
 			exit(1);
 	}
-	
+	testPid = pid;
 	/* code for parent */
 	/* if background process print pid and exit */
 	if(where == BACKGROUND){
@@ -214,16 +213,46 @@ int runcommand(char **cline, int where){
 	else
 		return (status);
 }
-
-void end_Process(pid_t pid)
+//use waitpid to determine whether job has finished
+//sigcon for bg
+void setType(int type, pid_t pid)
 {
-	printf("Oh\n");
+}
+
+void end_Process()
+{
+	kill(SIGKILL,findFG());
+}
+
+void stop_Process()
+{
+	pid_t pid;
+	pid = findFG();
+	printf("[Stopped] %d\n", pid);
+	kill(SIGTSTP,pid);
+}
+
+
+void addJob(struct job* new)
+{
+	struct job *current;
+	 
+	if(job_list == NULL)
+		job_list = new;
+	else	 
+		for( current = job_list; current != NULL ;current = current->next)
+			if(current->next == NULL){
+				current->next = new;
+				break;
+			}
+}
+
+void job_remove_handle(){
 	
-	kill(SIGKILL,testPid);
 }
 
-void stop_Process(pid_t pid)
-{
-	printf("Oh\n");
-	kill(SIGTSTP,testPid);
-}
+pid_t findFG(){
+	for(struct job* current = job_list; current != NULL; current = current->next)
+		if(current->pjob->type == FOREGROUND)
+			return current->pjob->pid;
+}	
