@@ -1,0 +1,51 @@
+void removeNode(int val, struct node* root)
+{
+	struct node *current, *temp, *trail;
+	int isRoot = 1;
+	
+	if(root->x == val)
+	{
+		 root->x = root->next->x;
+ 
+        // store address of next node
+        temp = root->next;
+ 
+        // Remove the link of next node
+        root->next = root->next->next;
+ 
+        // free memory
+        free(temp);
+ 
+        return;
+	}
+	else{
+	
+		for(current = root, trail = NULL; current != NULL; current = current->next)
+		{
+			if(current->x == val)
+			{
+			
+				temp = current;
+				if(isRoot > 1){
+				trail->next =current->next;
+				current = current->next;
+				free(temp);
+				}else
+				{
+					if(current->next !=NULL)
+					{
+						root = current->next;
+					}
+					else
+						root = NULL;
+				
+				break;
+				}
+			
+				break;
+			}
+			trail = current;
+			isRoot++;
+		}	
+	}
+}
