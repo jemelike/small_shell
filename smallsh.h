@@ -16,12 +16,18 @@
 #define FOREGROUND 	0
 #define BACKGROUND 	1
 
-int numjob = 0;
+#define STOPPED 0
+#define RUNNING 1 
+
+//int NUMJOBS;
+int NUMBG = 0;
+int NUMFG = 0;
 
 struct process_node{
 	pid_t pid;
 	int type;
 	int running;
+	char *file;
 	struct process_node *next;
 };
 
@@ -32,18 +38,19 @@ struct job{
 }*job_list	;
 
 
+int runcommand(char **cline, int where);
 int userin(char *);
 int gettok(char **);
 int inarg(char c);
 int procline(void);
 
-void end_Process();
-void stop_Process();
-
+void end_Process(int sig);
+void stop_Process(int sig);
+void killTerminal(int sig);
 void addJob(struct job*);
-void job_remove_handle();
+void job_remove_handle(int val);
 
 void printJobList();	
-void setType(int, pid_t);
+void adjustJob(int,int);
 
 pid_t findFG();
